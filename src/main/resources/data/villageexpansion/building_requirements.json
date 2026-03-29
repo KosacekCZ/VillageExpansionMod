@@ -1,0 +1,44 @@
+{
+  "buildings": [
+    {
+      "id": "test_house",
+      "construction_days": 1,
+      "requires": [
+        { "item": "minecraft:oak_log", "count": 8 },
+        { "item": "minecraft:cobblestone", "count": 16 },
+        { "item": "minecraft:oak_planks", "count": 24 }
+      ]
+    },
+    {
+      "id": "small_wooden_house",
+      "construction_days": 1,
+      "requires": [
+        { "item": "minecraft:oak_log", "count": 32 },
+        { "item": "minecraft:cobblestone", "count": 16 },
+        { "item": "minecraft:oak_planks", "count": 64 },
+        { "item": "minecraft:glass", "count": 3 }
+      ]
+    },
+    {
+      "id": "small_cobble_house",
+      "construction_days": 1,
+      "requires": [
+        { "item": "minecraft:oak_log", "count": 32 },
+        { "item": "minecraft:cobblestone", "count": 64 },
+        { "item": "minecraft:oak_planks", "count": 32 },
+        { "item": "minecraft:glass", "count": 3 }
+      ]
+    },
+    {
+      "id": "basic_farmland",
+      "construction_days": 1,
+      "requires": [
+        { "item": "minecraft:oak_log", "count": 32 },
+        { "item": "minecraft:oak_planks", "count": 8 },
+        { "item": "minecraft:dirt", "count": 64 },
+        { "item": "minecraft:wooden_hoe", "count": 1 },
+        { "item": "minecraft:seed", "count": 32 }
+      ]
+    }
+  ]
+}
