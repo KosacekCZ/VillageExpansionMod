@@ -9,19 +9,43 @@ import java.util.*;
 
 public class AStarPathfinder {
 
-    private static final int MAX_NODES = 10000; // prevent infinite search
+    private static final int MAX_NODES = 10000;
+    // Penalty for changing direction — encourages straight paths
+    private static final float TURN_PENALTY = 2.0f;
 
-    private record Node(BlockPos pos, Node parent, float g, float h) {
+    private static class Node implements Comparable<Node> {
+        BlockPos pos;
+        Node parent;
+        float g, h;
+        int dirX, dirZ; // direction we came from
+
+        Node(BlockPos pos, Node parent, float g, float h, int dirX, int dirZ) {
+            this.pos = pos;
+            this.parent = parent;
+            this.g = g;
+            this.h = h;
+            this.dirX = dirX;
+            this.dirZ = dirZ;
+        }
+
         float f() { return g + h; }
+
+        @Override
+        public int compareTo(Node other) {
+            return Float.compare(this.f(), other.f());
+        }
     }
 
     public static List<BlockPos> findPath(ServerWorld world, BlockPos from, BlockPos to) {
-        PriorityQueue<Node> open = new PriorityQueue<>(Comparator.comparingDouble(Node::f));
+        // Flatten both to surface
+        BlockPos start = flatten(world, from);
+        BlockPos end = flatten(world, to);
+
+        PriorityQueue<Node> open = new PriorityQueue<>();
         Map<Long, Float> visited = new HashMap<>();
 
-        Node start = new Node(flatten(world, from), null, 0, heuristic(from, to));
-        open.add(start);
-        visited.put(start.pos().asLong(), 0f);
+        open.add(new Node(start, null, 0, heuristic(start, end), 0, 0));
+        visited.put(start.asLong(), 0f);
 
         int iterations = 0;
 
@@ -29,49 +53,43 @@ public class AStarPathfinder {
             iterations++;
             Node current = open.poll();
 
-            // Reached destination (within 2 blocks)
-            if (current.pos().isWithinDistance(to, 2)) {
+            if (current.pos.isWithinDistance(end, 2)) {
                 return reconstructPath(current);
             }
 
-            // Explore neighbours (4 cardinal directions)
-            for (BlockPos neighbour : getNeighbours(world, current.pos())) {
-                float newG = current.g + 1;
+            int[][] directions = {{1,0},{-1,0},{0,1},{0,-1}};
+
+            for (int[] dir : directions) {
+                BlockPos neighbourXZ = new BlockPos(
+                        current.pos.getX() + dir[0],
+                        0,
+                        current.pos.getZ() + dir[1]
+                );
+                BlockPos neighbour = flatten(world, neighbourXZ);
+
+                if (!isWalkable(world, neighbour)) continue;
+
+                // Add turn penalty if direction changes
+                float turnCost = (current.dirX != 0 && dir[0] == 0) ||
+                        (current.dirZ != 0 && dir[1] == 0) ? TURN_PENALTY : 0;
+                float newG = current.g + 1 + turnCost;
                 long key = neighbour.asLong();
 
                 if (visited.containsKey(key) && visited.get(key) <= newG) continue;
 
                 visited.put(key, newG);
-                float h = heuristic(neighbour, to);
-                open.add(new Node(neighbour, current, newG, h));
+                float h = heuristic(neighbour, end);
+                open.add(new Node(neighbour, current, newG, h, dir[0], dir[1]));
             }
         }
 
-        // No path found — return straight line as fallback
+        // Fallback to straight line
         return straightLine(world, from, to);
     }
 
-    private static List<BlockPos> getNeighbours(ServerWorld world, BlockPos pos) {
-        List<BlockPos> neighbours = new ArrayList<>();
-        int[][] directions = {{1, 0}, {-1, 0}, {0, 1}, {0, -1}};
-
-        for (int[] dir : directions) {
-            BlockPos candidate = new BlockPos(pos.getX() + dir[0], 0, pos.getZ() + dir[1]);
-            candidate = flatten(world, candidate);
-
-            // Allow natural ground and existing paths
-            BlockPos surface = candidate.down();
-            net.minecraft.block.BlockState state = world.getBlockState(surface);
-
-            if (isWalkable(state)) {
-                neighbours.add(candidate);
-            }
-        }
-
-        return neighbours;
-    }
-
-    private static boolean isWalkable(net.minecraft.block.BlockState state) {
+    private static boolean isWalkable(ServerWorld world, BlockPos pos) {
+        BlockPos surface = pos.down();
+        net.minecraft.block.BlockState state = world.getBlockState(surface);
         net.minecraft.block.Block block = state.getBlock();
         return block == Blocks.GRASS_BLOCK
                 || block == Blocks.DIRT
@@ -84,7 +102,6 @@ public class AStarPathfinder {
                 || block == Blocks.PODZOL;
     }
 
-    // Get surface-level position (air block above ground)
     private static BlockPos flatten(ServerWorld world, BlockPos pos) {
         return world.getTopPosition(
                 Heightmap.Type.WORLD_SURFACE_WG,
@@ -93,24 +110,21 @@ public class AStarPathfinder {
     }
 
     private static float heuristic(BlockPos a, BlockPos b) {
-        // Manhattan distance
         return Math.abs(a.getX() - b.getX()) + Math.abs(a.getZ() - b.getZ());
     }
 
     private static List<BlockPos> reconstructPath(Node node) {
         List<BlockPos> path = new ArrayList<>();
         while (node != null) {
-            path.add(node.pos());
-            node = node.parent();
+            path.add(node.pos);
+            node = node.parent;
         }
         Collections.reverse(path);
         return path;
     }
 
-    // Straight line fallback using Bresenham
     private static List<BlockPos> straightLine(ServerWorld world, BlockPos from, BlockPos to) {
         List<BlockPos> path = new ArrayList<>();
-
         int x0 = from.getX(), z0 = from.getZ();
         int x1 = to.getX(), z1 = to.getZ();
         int dx = Math.abs(x1 - x0), dz = Math.abs(z1 - z0);
@@ -124,7 +138,6 @@ public class AStarPathfinder {
             if (e2 > -dz) { err -= dz; x0 += sx; }
             if (e2 < dx)  { err += dx; z0 += sz; }
         }
-
         return path;
     }
 }
