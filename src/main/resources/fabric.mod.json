@@ -6,6 +6,9 @@
 	"entrypoints": {
 		"main": [
 			"com.jetbeans.VillageExpansionMod"
+		],
+		"client": [
+			"com.jetbeans.VillageExpansionClient"
 		]
 	},
 	"mixins": [

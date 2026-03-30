@@ -1,6 +1,5 @@
 package com.jetbeans;
 
-
 import net.minecraft.nbt.NbtCompound;
 import net.minecraft.nbt.NbtList;
 import net.minecraft.server.world.ServerWorld;
@@ -14,11 +13,11 @@ import java.util.Map;
 public class VillageState extends PersistentState {
 
     private static final String KEY = "villageexpansion_villages";
-    private static final int MERGE_RADIUS = 64; // blocks — treat nearby positions as same village
+    private static final int MERGE_RADIUS = 64;
 
     private final Map<BlockPos, VillageData> villages = new HashMap<>();
 
-    // --- Public API ---
+    // ── Public API ────────────────────────────────────────────────────
 
     public boolean hasVillageNear(BlockPos pos) {
         return findNear(pos) != null;
@@ -28,14 +27,34 @@ public class VillageState extends PersistentState {
         if (hasVillageNear(pos)) return;
         villages.put(pos, new VillageData(pos));
         VillageExpansionMod.LOGGER.info("Registered new village at {}", pos);
-        markDirty(); // tells Minecraft to save this
+        markDirty();
     }
 
     public Collection<VillageData> getAll() {
-        return villages.values(); // must return actual map values, not new ArrayList(villages.values())
+        return villages.values();
     }
 
-    // --- Internal ---
+    public VillageData getVillageNear(BlockPos pos) {
+        return findNear(pos);
+    }
+
+    /**
+     * Exact lodestone position lookup — used by the mixin to verify a specific
+     * lodestone belongs to a known village.
+     */
+    public VillageData getVillageByLodestone(BlockPos pos) {
+        for (VillageData v : villages.values()) {
+            if (v.lodestonePos != null
+                    && v.lodestonePos.getX() == pos.getX()
+                    && v.lodestonePos.getY() == pos.getY()
+                    && v.lodestonePos.getZ() == pos.getZ()) {
+                return v;
+            }
+        }
+        return null;
+    }
+
+    // ── Internal ──────────────────────────────────────────────────────
 
     private VillageData findNear(BlockPos pos) {
         for (BlockPos known : villages.keySet()) {
@@ -46,7 +65,7 @@ public class VillageState extends PersistentState {
         return null;
     }
 
-    // --- PersistentState lifecycle ---
+    // ── PersistentState lifecycle ─────────────────────────────────────
 
     @Override
     public NbtCompound writeNbt(NbtCompound nbt) {
@@ -60,19 +79,13 @@ public class VillageState extends PersistentState {
 
     public static VillageState fromNbt(NbtCompound nbt) {
         VillageState state = new VillageState();
-        NbtList list = nbt.getList("villages", 10); // 10 = NbtCompound type
+        NbtList list = nbt.getList("villages", 10);
         for (int i = 0; i < list.size(); i++) {
             VillageData data = VillageData.fromNbt(list.getCompound(i));
             state.villages.put(data.center, data);
         }
         return state;
     }
-
-    public VillageData getVillageNear(BlockPos pos) {
-        return findNear(pos);
-    }
-
-    // --- Load from world ---
 
     public static VillageState get(ServerWorld world) {
         return world.getPersistentStateManager().getOrCreate(

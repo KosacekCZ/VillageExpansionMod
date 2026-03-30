@@ -4,14 +4,11 @@ import com.google.gson.JsonArray;
 import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
 import com.google.gson.JsonParser;
-import net.fabricmc.loader.api.FabricLoader;
 
-import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
-import java.nio.file.Files;
-import java.nio.file.Path;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 import java.util.Optional;
 
@@ -21,7 +18,6 @@ public class BuildingRequirementsLoader {
 
     public static void load() {
         try {
-            // Load from mod resources
             InputStream stream = BuildingRequirementsLoader.class
                     .getResourceAsStream("/data/villageexpansion/building_requirements.json");
 
@@ -45,17 +41,23 @@ public class BuildingRequirementsLoader {
         }
     }
 
+    /** Returns all known building requirements (for the GUI catalogue page). */
+    public static List<BuildingRequirement> getAll() {
+        return Collections.unmodifiableList(requirements);
+    }
+
     public static Optional<BuildingRequirement> getForBuilding(String buildingId) {
         return requirements.stream()
                 .filter(r -> r.buildingId.equals(buildingId))
                 .findFirst();
     }
 
-    // Returns the next building the village should construct based on level
+    /**
+     * Returns the next building the village should construct.
+     * Currently always the first entry; will become level-aware later.
+     */
     public static Optional<BuildingRequirement> getNext() {
         if (requirements.isEmpty()) return Optional.empty();
-        // For now always returns first building type
-        // Later this will be level-aware
         return Optional.of(requirements.get(0));
     }
 }

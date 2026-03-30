@@ -14,6 +14,7 @@ public class VillageData {
     public boolean pendingBuild = false;
     public BlockPos townHallPos = null;
     public BlockPos townHallChestPos = null;
+    public BlockPos lodestonePos = null;   // ← new: where the registry lodestone sits
     public BlockPos center;
     public int level;
     public long lastGrowthTick;
@@ -45,22 +46,17 @@ public class VillageData {
     }
 
     public boolean isTooCloseToExisting(BlockPos candidate, Vec3i size, int margin) {
-        // Always enforce at least 24 block minimum distance between any two structures
         int minDist = Math.max(Math.max(size.getX(), size.getZ()) + margin, 24);
-
         for (BlockPos existing : placedStructures) {
             double dist = Math.sqrt(
                     Math.pow(candidate.getX() - existing.getX(), 2) +
-                            Math.pow(candidate.getZ() - existing.getZ(), 2)
-            );
-            if (dist < minDist) {
-                return true;
-            }
+                            Math.pow(candidate.getZ() - existing.getZ(), 2));
+            if (dist < minDist) return true;
         }
         return false;
     }
 
-    // --- NBT serialization ---
+    // ── NBT serialization ─────────────────────────────────────────────
 
     public NbtCompound toNbt() {
         NbtCompound nbt = new NbtCompound();
@@ -71,20 +67,15 @@ public class VillageData {
         nbt.putBoolean("hasTownHall", hasTownHall);
         nbt.putBoolean("pendingBuild", pendingBuild);
 
-
         NbtList projectList = new NbtList();
         for (ConstructionProject project : activeProjects) {
             projectList.add(project.toNbt());
         }
         nbt.put("activeProjects", projectList);
 
-
-        if (townHallPos != null) {
-            nbt.putLong("townHallPos", townHallPos.asLong());
-        }
-        if (townHallChestPos != null) {
-            nbt.putLong("townHallChestPos", townHallChestPos.asLong());
-        }
+        if (townHallPos != null)    nbt.putLong("townHallPos",    townHallPos.asLong());
+        if (townHallChestPos != null) nbt.putLong("townHallChestPos", townHallChestPos.asLong());
+        if (lodestonePos != null)   nbt.putLong("lodestonePos",   lodestonePos.asLong());
 
         NbtList structureList = new NbtList();
         for (BlockPos pos : placedStructures) {
@@ -111,12 +102,9 @@ public class VillageData {
             data.activeProjects.add(ConstructionProject.fromNbt(projectList.getCompound(i)));
         }
 
-        if (nbt.contains("townHallPos")) {
-            data.townHallPos = BlockPos.fromLong(nbt.getLong("townHallPos"));
-        }
-        if (nbt.contains("townHallChestPos")) {
-            data.townHallChestPos = BlockPos.fromLong(nbt.getLong("townHallChestPos"));
-        }
+        if (nbt.contains("townHallPos"))    data.townHallPos    = BlockPos.fromLong(nbt.getLong("townHallPos"));
+        if (nbt.contains("townHallChestPos")) data.townHallChestPos = BlockPos.fromLong(nbt.getLong("townHallChestPos"));
+        if (nbt.contains("lodestonePos"))   data.lodestonePos   = BlockPos.fromLong(nbt.getLong("lodestonePos"));
 
         NbtList structureList = nbt.getList("placedStructures", 10);
         for (int i = 0; i < structureList.size(); i++) {
